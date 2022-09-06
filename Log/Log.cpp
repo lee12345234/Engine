@@ -15,12 +15,12 @@
 #include <fcntl.h>
 #include <string.h>
 namespace Lee{
-Log*Log::Single(const char*file,int line,Level level,OutPutType type){
-	return new Log(file,line,level,type);
+Log*Log::Single(const char*function,const char*file,int line,Level level,OutPutType type){
+	return new Log(function,file,line,level,type);
 
 }
 
-Log::Log(const char*file,int line,Level level,OutPutType type){
+Log::Log(const char*function,const char*file,int line,Level level,OutPutType type){
 	time_t nowtime;
 	struct tm* p;
 	time(&nowtime);
@@ -44,11 +44,11 @@ Log::Log(const char*file,int line,Level level,OutPutType type){
 	m_file += std::to_string(p->tm_sec);
 	switch(type){
 		case OutPutType::Terminal:{
-			auto ptr = std::make_shared<OutputTerminalStream>(file,line,level);
+			auto ptr = std::make_shared<OutputTerminalStream>(function,file,line,level);
 			m_stream = std::static_pointer_cast<OutputStream>(ptr);	
 		}break;
 		case OutPutType::File:{
-			m_stream = std::static_pointer_cast<OutputStream>(std::make_shared<OutputFileStream>(file,line,m_file,level));
+			m_stream = std::static_pointer_cast<OutputStream>(std::make_shared<OutputFileStream>(function,file,line,m_file,level));
 		}break;
 	};
 		
@@ -81,11 +81,16 @@ std::string OutputStream::GetAdrress(){
 	void*array[5];
 	size_t size;
 	size = backtrace(array,5);
+	std::string functionAdress;
 	char**msg = backtrace_symbols(array,size);
-	std::string tmp = std::string(msg[size-1]);
-	auto index_start = tmp.find_last_of('(');
-	auto index_end = tmp.find_last_of(')');
-	auto functionAdress = tmp.substr(index_start,index_end);//function address
+	for(int i=size-1;i>1;i--){
+		std::string tmp = std::string(msg[i]);
+		if(std::string::npos != tmp.find(function)){
+			functionAdress = std::move(tmp);
+			auto indexS = functionAdress.find_first_of('(');
+			functionAdress = functionAdress.substr(indexS,functionAdress.size());
+		}
+	}
 	return functionAdress;
 }
 
@@ -135,7 +140,7 @@ void OutputStream::NormalLog(){
 	auto address = GetAdrress();
 	m_ss<<address;
 }
-OutputFileStream::OutputFileStream(const char*file,int line,const std::string&path,Level level):OutputStream(file,line,level),m_logpath(path){
+OutputFileStream::OutputFileStream(const char*function,const char*file,int line,const std::string&path,Level level):OutputStream(function,file,line,level),m_logpath(path){
 		
 
 }
@@ -160,7 +165,7 @@ void OutputFileStream::exec(){
 	ofs.close();
 }
 
-OutputTerminalStream::OutputTerminalStream(const char*file,int line,Level level):OutputStream(file,line,level){
+OutputTerminalStream::OutputTerminalStream(const char*function,const char*file,int line,Level level):OutputStream(function,file,line,level){
 	
 
 }

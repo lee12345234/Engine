@@ -14,21 +14,22 @@
 #include <memory>
 #include <iostream>
 #define LOG(TYPE) \
-	*(*Lee::Log::Single(__FILE__,__LINE__,Level::TYPE))()
+	*(*Lee::Log::Single(__FUNCTION__,__FILE__,__LINE__,Level::TYPE))()
 
 namespace Lee{
 class OutputStream{
 public:
 	using ptr = std::shared_ptr<OutputStream>;
-	OutputStream(const char*file,int line,Level level):file(file),line(line),m_level(level){
+	OutputStream(const char*function,const char*file,int line,Level level):file(file),function(function),line(line),m_level(level){
 	}
 	OutputStream(const OutputStream&)=delete;
 	template<typename... Args>
-	void operator<<(Args... args){
+	std::stringstream&operator<<(Args... args){
 		NormalLog();
-		m_ss << " FILE:"<< file<< " Line:["<< line <<"] "; 
+		m_ss <<" Function:"<< function <<" FILE:"<< file<< " Line:["<< line <<"] "; 
 		(m_ss << ... << args);
 		exec();
+		return m_ss;
 	}
 	virtual void NormalLog();//init log format
 	virtual void exec() = 0;//exec log
@@ -39,6 +40,7 @@ private:
 	std::string GetLevel(Level level);
 	std::stringstream m_ss;
 	const char*file;
+	const char*function;
 	int line=0;
 	Level m_level = Level::INFO;
 };
@@ -46,7 +48,7 @@ class OutputFileStream:public OutputStream{
 public:
 	using ptr = std::shared_ptr<OutputFileStream>;
 	OutputFileStream(const OutputFileStream&)=delete; 
-	OutputFileStream(const char*file,int line,const std::string&path,Level level);
+	OutputFileStream(const char*function,const char*file,int line,const std::string&path,Level level);
 	virtual void exec()  override;
 	virtual ~OutputFileStream(){}
 private:
@@ -55,7 +57,7 @@ private:
 class OutputTerminalStream:public OutputStream{
 public:
 	using ptr = std::shared_ptr<OutputTerminalStream>;
-	OutputTerminalStream(const char*file,int line,Level level);
+	OutputTerminalStream(const char* function,const char*file,int line,Level level);
 	OutputTerminalStream(const OutputTerminalStream&)=delete;
 	virtual void exec() override;
 	virtual ~OutputTerminalStream(){}
@@ -65,9 +67,9 @@ public:
 
 class Log{
 	Log()=delete;
-	explicit Log(const char*file,int line,Level level,OutPutType type);
+	explicit Log(const char*function,const char*file,int line,Level level,OutPutType type);
 public:
-	static Log*Single(const char*file,int line,Level level,OutPutType type = OutPutType::File);
+	static Log*Single(const char*function,const char*file,int line,Level level,OutPutType type = OutPutType::File);
 	OutputStream::ptr&operator()();	
 	void SetPath(const std::string&path);
 	std::string GetLogPath();
